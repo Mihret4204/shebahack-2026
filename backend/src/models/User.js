@@ -5,15 +5,44 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['buyer', 'seller', 'admin'], default: 'buyer' },
-  phone: String,
-  address: {
-    street: String,
+  role: { type: String, enum: ['customer', 'vendor', 'organization', 'admin'], default: 'customer' },
+  phone: { type: String, required: true },
+  location: {
     city: String,
-    state: String,
-    zipCode: String
+    subcity: String,
+    woreda: String,
+    coordinates: {
+      lat: Number,
+      lng: Number
+    }
   },
-  isVerified: { type: Boolean, default: false }
+  language: { type: String, enum: ['amharic', 'afaan_oromo', 'tigrinya', 'english'], default: 'amharic' },
+  
+  // Vendor specific fields
+  skills: [String],
+  bio: String,
+  portfolio: [String], // Image URLs
+  rating: { type: Number, default: 0 },
+  totalReviews: { type: Number, default: 0 },
+  totalEarnings: { type: Number, default: 0 },
+  
+  // Organization specific fields
+  organizationType: { type: String, enum: ['restaurant', 'office', 'shop', 'hotel', 'other'] },
+  businessName: String,
+  
+  // Verification
+  isVerified: { type: Boolean, default: false },
+  isPhoneVerified: { type: Boolean, default: false },
+  isIdVerified: { type: Boolean, default: false },
+  verificationDocuments: [String],
+  
+  // Financial
+  paymentMethod: { type: String, enum: ['telebirr', 'bank_transfer', 'cash'], default: 'telebirr' },
+  telebirrNumber: String,
+  bankAccount: {
+    bankName: String,
+    accountNumber: String
+  }
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {
