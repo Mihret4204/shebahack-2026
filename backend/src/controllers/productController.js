@@ -2,7 +2,7 @@ const Product = require('../models/Product');
 
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create({ ...req.body, seller: req.user.id });
+    const product = await Product.create({ ...req.body, vendor: req.user.id });
     res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -11,13 +11,27 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, location, minPrice, maxPrice, isApproved } = req.query;
     const filter = { isActive: true };
     
     if (category) filter.category = category;
-    if (search) filter.name = { $regex: search, $options: 'i' };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { nameAmharic: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+    if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
 
-    const products = await Product.find(filter).populate('seller', 'name email');
+    const products = await Product.find(filter)
+      .populate('vendor', 'name phone location rating totalReviews skills')
+      .sort({ createdAt: -1 });
+    
     res.json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -26,7 +40,8 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate('seller', 'name email');
+    const product = await Product.findById(req.params.id)
+      .populate('vendor', 'name phone location rating totalReviews skills portfolio bio');
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.json(product);
   } catch (error) {
@@ -37,7 +52,7 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, seller: req.user.id },
+      { _id: req.params.id, vendor: req.user.id },
       req.body,
       { new: true }
     );
@@ -50,7 +65,7 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findOneAndDelete({ _id: req.params.id, seller: req.user.id });
+    const product = await Product.findOneAndDelete({ _id: req.params.id, vendor: req.user.id });
     if (!product) return res.status(404).json({ message: 'Product not found or unauthorized' });
     res.json({ message: 'Product deleted' });
   } catch (error) {

@@ -11,13 +11,28 @@ exports.createService = async (req, res) => {
 
 exports.getAllServices = async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, location, minPrice, maxPrice, isApproved } = req.query;
     const filter = { isActive: true };
     
     if (category) filter.category = category;
-    if (search) filter.name = { $regex: search, $options: 'i' };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { nameAmharic: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (location) filter['location.city'] = { $regex: location, $options: 'i' };
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+    if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
 
-    const services = await Service.find(filter).populate('provider', 'name email');
+    const services = await Service.find(filter)
+      .populate('provider', 'name phone location rating totalReviews skills')
+      .sort({ createdAt: -1 });
+    
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: error.message });
